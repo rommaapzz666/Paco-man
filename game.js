@@ -20,57 +20,73 @@ const puntajesRef = collection(db, "puntajes");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// EL PACOMAN 
-let x = 200;
-let y = 200;
+// VARIABLES DEL JUEGO
 const radio = 20;
 const velocidad = 3;
-
-let vx = 0; 
-let vy = 0; 
-
-// LOS MALOS (Nombres de variables corregidos)
 const radioFantasma = 18;
 const velocidadFantasma = 1.5;
-let gameover = false;
+const radioComida = 6;
 
-let fantasmas = [
-  { x: 50, y: 50 }
-];
+let x, y, vx, vy, gameover, fantasmas, comidaX, comidaY, comidaVisible, puntos;
+let animacionId;
 
-// EL MORFI 
-let comidaX = 300;
-let comidaY = 200; 
-const radioComida = 6; 
-let comidaVisible = true; 
-let puntos = 0; 
-
-// BASE DE DATOS EN LA NUBE
+// ELEMENTOS DOM
 const gameOverPanel = document.getElementById("gameOverPanel");
 const puntajeFinal = document.getElementById("puntajeFinal");
 const nombreJugador = document.getElementById("nombreJugador");
 const btnGuardar = document.getElementById("btnGuardar");
+const btnReiniciar = document.getElementById("btnReiniciar");
 const tablaPuntajes = document.getElementById("tablaPuntajes");
 
+// INICIALIZAR/REINICIAR ESTADO DEL JUEGO
+function iniciarJuego() {
+  x = 200;
+  y = 200;
+  vx = 0; // Empieza quieto
+  vy = 0;
+  gameover = false;
+  fantasmas = [{ x: 50, y: 50 }];
+  comidaX = 300;
+  comidaY = 200;
+  comidaVisible = true;
+  puntos = 0;
+
+  gameOverPanel.classList.add("oculto");
+  btnGuardar.disabled = false;
+
+  if (animacionId) cancelAnimationFrame(animacionId);
+  actualizarJuego();
+}
+
+// FUNCIONES DE CONTROL DE MOVIMIENTO
+function moverArriba() { vx = 0; vy = -velocidad; }
+function moverAbajo() { vx = 0; vy = velocidad; }
+function moverIzquierda() { vx = -velocidad; vy = 0; }
+function moverDerecha() { vx = velocidad; vy = 0; }
+function parar() { vx = 0; vy = 0; } // QUEDARSE QUIETO
+
+// TECLADO (Espacio = Frenar)
 window.addEventListener("keydown", (evento) => {
-  if (evento.key === "ArrowRight") {
-    vx = velocidad;
-    vy = 0;
-  } else if (evento.key === "ArrowLeft") {
-    vx = -velocidad;
-    vy = 0;
-  } else if (evento.key === "ArrowUp") {
-    vx = 0;
-    vy = -velocidad;
-  } else if (evento.key === "ArrowDown") {
-    vx = 0;
-    vy = velocidad;
-  }
+  if (evento.key === "ArrowRight") moverDerecha();
+  else if (evento.key === "ArrowLeft") moverIzquierda();
+  else if (evento.key === "ArrowUp") moverArriba();
+  else if (evento.key === "ArrowDown") moverAbajo();
+  else if (evento.key === " " || evento.code === "Space") parar();
 });
 
-// BASE DE DATOS EN LA NUBE
+// BOTONES TÁCTILES PARA CELULAR
+document.getElementById("btnArriba").addEventListener("click", moverArriba);
+document.getElementById("btnAbajo").addEventListener("click", moverAbajo);
+document.getElementById("btnIzquierda").addEventListener("click", moverIzquierda);
+document.getElementById("btnDerecha").addEventListener("click", moverDerecha);
+document.getElementById("btnParar").addEventListener("click", parar);
+
+// BOTÓN REINICIAR
+btnReiniciar.addEventListener("click", iniciarJuego);
+
+// FIREBASE: LEER Y GUARDAR
 async function obtenerPuntajes() {
-  tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking global...</td></tr>";
+  tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking...</td></tr>";
   try {
     const q = query(puntajesRef, orderBy("puntos", "desc"), limit(5));
     const querySnapshot = await getDocs(q);
@@ -105,25 +121,21 @@ async function guardarPuntuacion() {
     });
     
     await obtenerPuntajes();
-    gameOverPanel.classList.add("oculto");
     nombreJugador.value = "";
   } catch (error) {
     console.error("Error guardando en Firebase:", error);
-  } finally {
-    btnGuardar.disabled = false;
   }
 }
 
 btnGuardar.addEventListener("click", guardarPuntuacion);
 
+// BUCLE PRINCIPAL DE JUEGO
 function actualizarJuego() {
-  // Si perdimos, mostramos Game Over
   if (gameover) {
     ctx.fillStyle = "red";
     ctx.font = "30px Arial";
     ctx.fillText("GAME OVER", 110, 200);
 
-    // BASE DE DATOS EN LA NUBE
     if (gameOverPanel.classList.contains("oculto")) {
       puntajeFinal.textContent = puntos;
       gameOverPanel.classList.remove("oculto");
@@ -131,16 +143,14 @@ function actualizarJuego() {
     return;
   }
 
-  // Mover Paco Man
+  // Mover Pac-Man
   x += vx;
   y += vy;
 
-  // Condiciones de bordes de Pako Man 
-  if (x > canvas.width) {
-    x = 0; 
-  } else if (x < 0) {
-    x = canvas.width; 
-  }
+  // Paredes y bordes
+  if (x > canvas.width) x = 0;
+  else if (x < 0) x = canvas.width;
+  
   if (y - radio < 0) {
     y = radio;
     vy = 0; 
@@ -149,14 +159,13 @@ function actualizarJuego() {
     vy = 0; 
   }
 
-  // Comer el Morfi
+  // Comer comida
   if (comidaVisible) {
     const dx = x - comidaX;
     const dy = y - comidaY;
     const distancia = Math.sqrt(dx * dx + dy * dy);
     if (distancia < radio + radioComida) {
       puntos += 10;
-      console.log("Vas sumando", puntos);
       comidaX = Math.floor(Math.random() * (canvas.width - 40)) + 20;
       comidaY = Math.floor(Math.random() * (canvas.height - 40)) + 20;    
 
@@ -169,10 +178,10 @@ function actualizarJuego() {
     }
   }
 
-  // DIBUJAR TODO EN PANTALLA
+  // DIBUJAR PANTALLA
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Morfi
+  // Comida
   if (comidaVisible) {
     ctx.fillStyle = "green";
     ctx.beginPath();
@@ -180,15 +189,13 @@ function actualizarJuego() {
     ctx.fill();
   }
 
-  // MALO
+  // Fantasmas IA
   fantasmas.forEach((f) => {
-    // 2. IA persiguiendo al PacoMan
     if (f.x < x) f.x += velocidadFantasma;
     if (f.x > x) f.x -= velocidadFantasma;
     if (f.y < y) f.y += velocidadFantasma;
     if (f.y > y) f.y -= velocidadFantasma;
 
-    // Morir con el Fantasma
     const dxFantasma = x - f.x;
     const dyFantasma = y - f.y;
     const distFantasma = Math.sqrt(dxFantasma * dxFantasma + dyFantasma * dyFantasma);
@@ -202,21 +209,21 @@ function actualizarJuego() {
     ctx.fill();
   });
 
-  // PAKO
+  // Pac-Man
   ctx.fillStyle = "yellow";
   ctx.beginPath();
   ctx.arc(x, y, radio, 0.2 * Math.PI, 1.8 * Math.PI);
   ctx.lineTo(x, y);
   ctx.fill();
 
-  // POINT
+  // Puntuación
   ctx.fillStyle = "white";
   ctx.font = "16px Arial";
   ctx.fillText("Puntos: " + puntos, 10, 25);
 
-  requestAnimationFrame(actualizarJuego);
+  animacionId = requestAnimationFrame(actualizarJuego);
 }
 
-// BASE DE DATOS EN LA NUBE
+// INICIAR
 obtenerPuntajes();
-actualizarJuego();
+iniciarJuego();

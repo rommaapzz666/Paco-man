@@ -5,12 +5,15 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 20px 0;
+  margin: 10px 0;
+  touch-action: manipulation;
 }
 
 canvas {
   border: 4px solid blue;
   background-color: black;
+  max-width: 90vw;
+  height: auto;
 }
 
 #gameOverPanel {
@@ -20,10 +23,14 @@ canvas {
   padding: 15px;
   border-radius: 8px;
   border: 2px solid red;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
 }
 
 .oculto {
-  display: none;
+  display: none !important;
 }
 
 input, button {
@@ -44,9 +51,54 @@ button:hover {
   background-color: #e6e600;
 }
 
+.btn-reiniciar {
+  background-color: #00e676;
+  color: black;
+  font-size: 16px;
+}
+
+/* Controles Táctiles D-Pad */
+.controles-tactiles {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.fila {
+  display: flex;
+  gap: 5px;
+}
+
+.btn-dpad {
+  width: 50px;
+  height: 50px;
+  font-size: 20px;
+  background-color: #333;
+  color: white;
+  border: 2px solid #555;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+}
+
+.btn-dpad:active {
+  background-color: yellow;
+  color: black;
+}
+
+.btn-stop {
+  background-color: #a00;
+}
+
+/* Tabla de Puntuaciones */
 .tabla-contenedor {
   margin-top: 20px;
-  width: 300px;
+  width: 90vw;
+  max-width: 320px;
   text-align: center;
 }
 

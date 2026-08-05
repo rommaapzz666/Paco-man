@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi Pac-Man en JS</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -10,15 +11,33 @@
   
   <canvas id="gameCanvas" width="400" height="400"></canvas>
 
+  <!-- Panel Game Over -->
   <div id="gameOverPanel" class="oculto">
     <h2>¡GAME OVER!</h2>
     <p>Tu puntuación: <span id="puntajeFinal">0</span></p>
     <input type="text" id="nombreJugador" placeholder="Ingresa tu nombre" maxlength="10">
     <button id="btnGuardar">Guardar Puntaje</button>
+    <button id="btnReiniciar" class="btn-reiniciar">🎮 Jugar de Nuevo</button>
   </div>
 
+  <!-- Controles Táctiles para Celular -->
+  <div class="controles-tactiles">
+    <div class="fila">
+      <button class="btn-dpad" id="btnArriba">▲</button>
+    </div>
+    <div class="fila">
+      <button class="btn-dpad" id="btnIzquierda">◀</button>
+      <button class="btn-dpad btn-stop" id="btnParar">⏹</button>
+      <button class="btn-dpad" id="btnDerecha">▶</button>
+    </div>
+    <div class="fila">
+      <button class="btn-dpad" id="btnAbajo">▼</button>
+    </div>
+  </div>
+
+  <!-- Tabla de Posiciones -->
   <div class="tabla-contenedor">
-    <h3>🏆 Top 5 Global de Amigos</h3>
+    <h3> Top 5 Global </h3>
     <table>
       <thead>
         <tr>
