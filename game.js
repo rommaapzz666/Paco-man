@@ -1,6 +1,6 @@
 // IMPORTAR FIREBASE DESDE LA NUBE
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // BASE DE DATOS EN LA NUBE
 const firebaseConfig = {
@@ -17,6 +17,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const puntajesRef = collection(db, "puntajes");
 
+// GENERAR O RECUPERAR ID ÚNICO DEL DISPOSITIVO
+let dispositivoID = localStorage.getItem("pacman_dispositivo_id");
+if (!dispositivoID) {
+  dispositivoID = "dev_" + Math.random().toString(36).substring(2, 11) + Date.now();
+  localStorage.setItem("pacman_dispositivo_id", dispositivoID);
+}
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -29,6 +36,7 @@ const radioComida = 6;
 
 let x, y, vx, vy, gameover, fantasmas, comidaX, comidaY, comidaVisible, puntos;
 let animacionId;
+let miRecordActual = 0; // Guardará el récord actual del jugador
 
 // ELEMENTOS DOM
 const gameOverPanel = document.getElementById("gameOverPanel");
@@ -75,35 +83,51 @@ window.addEventListener("keydown", (evento) => {
 });
 
 // BOTONES TÁCTILES PARA CELULAR
-document.getElementById("btnArriba").addEventListener("click", moverArriba);
-document.getElementById("btnAbajo").addEventListener("click", moverAbajo);
-document.getElementById("btnIzquierda").addEventListener("click", moverIzquierda);
-document.getElementById("btnDerecha").addEventListener("click", moverDerecha);
-document.getElementById("btnParar").addEventListener("click", parar);
+document.getElementById("btnArriba")?.addEventListener("click", moverArriba);
+document.getElementById("btnAbajo")?.addEventListener("click", moverAbajo);
+document.getElementById("btnIzquierda")?.addEventListener("click", moverIzquierda);
+document.getElementById("btnDerecha")?.addEventListener("click", moverDerecha);
+document.getElementById("btnParar")?.addEventListener("click", parar);
 
 // BOTÓN REINICIAR
-btnReiniciar.addEventListener("click", iniciarJuego);
+btnReiniciar?.addEventListener("click", iniciarJuego);
 
-// FIREBASE: LEER Y GUARDAR
+// FIREBASE: LEER Y GUARDAR SIN REPETIR DISPOSITIVO
 async function obtenerPuntajes() {
   tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking...</td></tr>";
   try {
-    const q = query(puntajesRef, orderBy("puntos", "desc"), limit(5));
+    const q = query(puntajesRef, orderBy("puntos", "desc"));
     const querySnapshot = await getDocs(q);
     tablaPuntajes.innerHTML = "";
 
     let posicion = 1;
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const fila = document.createElement("tr");
-      fila.innerHTML = `
-        <td>${posicion}</td>
-        <td>${data.nombre}</td>
-        <td>${data.puntos}</td>
-      `;
-      tablaPuntajes.appendChild(fila);
-      posicion++;
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+
+      // Guardar mi propio récord si este documento es de mi dispositivo
+      if (docSnap.id === dispositivoID) {
+        miRecordActual = data.puntos || 0;
+        if (!nombreJugador.value && data.nombre) {
+          nombreJugador.value = data.nombre; // Recordar su último nombre usado
+        }
+      }
+
+      // Solo mostrar los primeros 5 en la tabla
+      if (posicion <= 5) {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${posicion}</td>
+          <td>${data.nombre}</td>
+          <td>${data.puntos}</td>
+        `;
+        tablaPuntajes.appendChild(fila);
+        posicion++;
+      }
     });
+
+    if (posicion === 1) {
+      tablaPuntajes.innerHTML = "<tr><td colspan='3'>¡Sé el primero en la lista!</td></tr>";
+    }
   } catch (error) {
     console.error("Error leyendo Firebase:", error);
   }
@@ -113,17 +137,29 @@ async function guardarPuntuacion() {
   const nombre = nombreJugador.value.trim() || "Anónimo";
   btnGuardar.disabled = true;
 
+  // Solo guarda/actualiza si superó su propio récord personal
+  if (puntos <= miRecordActual) {
+    alert(`Tu récord personal es de ${miRecordActual} pts. ¡Sigue intentando para superarlo!`);
+    btnGuardar.disabled = false;
+    gameOverPanel.classList.add("oculto");
+    return;
+  }
+
   try {
-    await addDoc(puntajesRef, {
+    // Guarda o reemplaza usando el ID del dispositivo como clave del documento
+    await setDoc(doc(db, "puntajes", dispositivoID), {
       nombre: nombre,
       puntos: puntos,
       fecha: new Date()
     });
     
+    miRecordActual = puntos;
     await obtenerPuntajes();
-    nombreJugador.value = "";
+    gameOverPanel.classList.add("oculto");
   } catch (error) {
     console.error("Error guardando en Firebase:", error);
+  } finally {
+    btnGuardar.disabled = false;
   }
 }
 
