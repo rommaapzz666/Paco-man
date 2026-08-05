@@ -75,6 +75,11 @@ function parar() { vx = 0; vy = 0; } // QUEDARSE QUIETO
 
 // TECLADO (Espacio = Frenar)
 window.addEventListener("keydown", (evento) => {
+  // Evita que la pantalla se mueva hacia arriba, abajo o se desplace al presionar las flechas o el espacio
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space"].includes(evento.key)) {
+    evento.preventDefault();
+  }
+
   if (evento.key === "ArrowRight") moverDerecha();
   else if (evento.key === "ArrowLeft") moverIzquierda();
   else if (evento.key === "ArrowUp") moverArriba();
