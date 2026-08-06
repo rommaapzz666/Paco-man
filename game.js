@@ -85,8 +85,8 @@ function iniciarJuego() {
   if (animacionId) cancelAnimationFrame(animacionId);
   if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
 
-  // Aparece una súper fruta cada 15 segundos
-  intervaloSuperFruta = setInterval(generarSuperFruta, 15000);
+  // Aparece una súper fruta cada 30 segundos
+  intervaloSuperFruta = setInterval(generarSuperFruta, 30000);
 
   actualizarJuego();
 }
@@ -271,13 +271,13 @@ function actualizarJuego() {
     }
   }
 
-  // Comer Súper Fruta (+100 PTS + MODO FIEBRE)
+  // Comer Súper Fruta (+30 PTS + MODO FIEBRE)
   if (superComidaVisible) {
     const dxSuper = x - superComidaX;
     const dySuper = y - superComidaY;
     const distSuper = Math.sqrt(dxSuper * dxSuper + dySuper * dySuper);
     if (distSuper < radio + radioSuperComida) {
-      puntos += 100;
+      puntos += 30;
       superComidaVisible = false;
       activarModoFiebre();
     }
@@ -309,18 +309,37 @@ function actualizarJuego() {
   const paletaActual = paletasFantasmas[nivel % paletasFantasmas.length];
 
   fantasmas.forEach((f, idx) => {
-    if (f.x < x) f.x += velFantasmaActual;
-    if (f.x > x) f.x -= velFantasmaActual;
-    if (f.y < y) f.y += velFantasmaActual;
-    if (f.y > y) f.y -= velFantasmaActual;
+    // MOVIMIENTO: Si está en modo Fiebre se alejan (escapan), si no lo persiguen
+    if (modoFiebre) {
+      if (f.x < x) f.x -= velFantasmaActual;
+      if (f.x > x) f.x += velFantasmaActual;
+      if (f.y < y) f.y -= velFantasmaActual;
+      if (f.y > y) f.y += velFantasmaActual;
+
+      // Mantener fantasmas dentro del canvas cuando escapan
+      f.x = Math.max(radioFantasma, Math.min(canvas.width - radioFantasma, f.x));
+      f.y = Math.max(radioFantasma, Math.min(canvas.height - radioFantasma, f.y));
+    } else {
+      if (f.x < x) f.x += velFantasmaActual;
+      if (f.x > x) f.x -= velFantasmaActual;
+      if (f.y < y) f.y += velFantasmaActual;
+      if (f.y > y) f.y -= velFantasmaActual;
+    }
 
     const dxFantasma = x - f.x;
     const dyFantasma = y - f.y;
     const distFantasma = Math.sqrt(dxFantasma * dxFantasma + dyFantasma * dyFantasma);
     
-    // Si no está en modo fiebre, colisión causa Game Over
-    if (distFantasma < radio + radioFantasma && !modoFiebre) {
-      gameover = true;
+    // COLISIÓN Y COMER FANTASMAS
+    if (distFantasma < radio + radioFantasma) {
+      if (modoFiebre) {
+        // Comer al fantasma: suma 10 puntos y respawnea lejos
+        puntos += 10;
+        f.x = Math.floor(Math.random() * (canvas.width - 40)) + 20;
+        f.y = Math.floor(Math.random() * (canvas.height - 40)) + 20;
+      } else {
+        gameover = true;
+      }
     }
 
     // Color del fantasma (Azul/Blanco asustado en modo fiebre)
