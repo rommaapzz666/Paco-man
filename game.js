@@ -24,6 +24,24 @@ if (!dispositivoID) {
   localStorage.setItem("pacman_dispositivo_id", dispositivoID);
 }
 
+// SISTEMA DE TIENDA Y MONEDAS
+let monedasTotales = parseInt(localStorage.getItem("pacman_monedas")) || 0;
+let skinEquipada = localStorage.getItem("pacman_skin_equipada") || "clasico";
+let skinsDesbloqueadas = JSON.parse(localStorage.getItem("pacman_skins_compradas")) || ["clasico"];
+
+// CATÁLOGO DE SKINS
+const CATALOGO_SKINS = {
+  clasico: { nombre: "Clásico (Amarillo)", precio: 0, tipo: "color", valor: "#FFFF00" },
+  rojo: { nombre: "Pac Rojo", precio: 100, tipo: "color", valor: "#FF0000" },
+  neon: { nombre: "Pac Neón", precio: 200, tipo: "color", valor: "#00FFCC" },
+  futbol: { nombre: "Pelota de Fútbol", precio: 500, tipo: "dibujo", id: "futbol" },
+  sol: { nombre: "Sol Brillante", precio: 700, tipo: "dibujo", id: "sol" },
+  luna: { nombre: "Luna", precio: 700, tipo: "dibujo", id: "luna" },
+  sushi: { nombre: "Roll de Sushi", precio: 1000, tipo: "dibujo", id: "sushi" },
+  hamburguesa: { nombre: "Hamburguesa", precio: 1200, tipo: "dibujo", id: "hamburguesa" },
+  argentina: { nombre: "Bandera Argentina", precio: 1500, tipo: "dibujo", id: "argentina" }
+};
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -37,7 +55,7 @@ const radioSuperComida = 10;
 
 let x, y, vx, vy, gameover, fantasmas, comidaX, comidaY, comidaVisible, puntos;
 let animacionId;
-let miRecordActual = 0; // Guardará el récord actual del jugador
+let miRecordActual = 0;
 
 // VARIABLES MODO FIEBRE Y SÚPER FRUTA
 let superComidaX = -100, superComidaY = -100, superComidaVisible = false;
@@ -45,13 +63,11 @@ let modoFiebre = false;
 let tiempoFiebre = 0;
 let intervaloSuperFruta;
 
-// PALETAS DE COLORES SEGÚN NIVEL (CADA 100 PTS)
-const coloresPacman = ["#FFFF00", "#00FFCC", "#FF00FF", "#00FF00", "#FF9900", "#FF0066"];
 const paletasFantasmas = [
-  ["#FF0000", "#FFB8FF", "#00FFFF", "#FFB852"], // Nivel 0 (Originales)
-  ["#9900FF", "#00FF00", "#FF00AA", "#0099FF"], // Nivel 1
-  ["#FF5722", "#E91E63", "#00BCD4", "#8BC34A"], // Nivel 2
-  ["#E6EE9C", "#FFAB91", "#CE93D8", "#80CBC4"]  // Nivel 3+
+  ["#FF0000", "#FFB8FF", "#00FFFF", "#FFB852"],
+  ["#9900FF", "#00FF00", "#FF00AA", "#0099FF"],
+  ["#FF5722", "#E91E63", "#00BCD4", "#8BC34A"],
+  ["#E6EE9C", "#FFAB91", "#CE93D8", "#80CBC4"]
 ];
 
 // ELEMENTOS DOM
@@ -66,7 +82,7 @@ const tablaPuntajes = document.getElementById("tablaPuntajes");
 function iniciarJuego() {
   x = 200;
   y = 200;
-  vx = 0; // Empieza quieto
+  vx = 0;
   vy = 0;
   gameover = false;
   fantasmas = [{ x: 50, y: 50 }];
@@ -85,7 +101,6 @@ function iniciarJuego() {
   if (animacionId) cancelAnimationFrame(animacionId);
   if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
 
-  // Aparece una súper fruta cada 30 segundos
   intervaloSuperFruta = setInterval(generarSuperFruta, 30000);
 
   actualizarJuego();
@@ -101,7 +116,7 @@ function generarSuperFruta() {
 
 function activarModoFiebre() {
   modoFiebre = true;
-  tiempoFiebre = Date.now() + 5000; // 5 segundos de duración
+  tiempoFiebre = Date.now() + 5000;
 }
 
 // FUNCIONES DE CONTROL DE MOVIMIENTO
@@ -109,9 +124,8 @@ function moverArriba() { vx = 0; vy = -velocidad; }
 function moverAbajo() { vx = 0; vy = velocidad; }
 function moverIzquierda() { vx = -velocidad; vy = 0; }
 function moverDerecha() { vx = velocidad; vy = 0; }
-function parar() { vx = 0; vy = 0; } // QUEDARSE QUIETO
+function parar() { vx = 0; vy = 0; }
 
-// TECLADO (Espacio = Frenar)
 window.addEventListener("keydown", (evento) => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space"].includes(evento.key)) {
     evento.preventDefault();
@@ -124,17 +138,15 @@ window.addEventListener("keydown", (evento) => {
   else if (evento.key === " " || evento.code === "Space") parar();
 });
 
-// BOTONES TÁCTILES PARA CELULAR
 document.getElementById("btnArriba")?.addEventListener("click", moverArriba);
 document.getElementById("btnAbajo")?.addEventListener("click", moverAbajo);
 document.getElementById("btnIzquierda")?.addEventListener("click", moverIzquierda);
 document.getElementById("btnDerecha")?.addEventListener("click", moverDerecha);
 document.getElementById("btnParar")?.addEventListener("click", parar);
 
-// BOTÓN REINICIAR
 btnReiniciar?.addEventListener("click", iniciarJuego);
 
-// FIREBASE: LEER Y GUARDAR SIN REPETIR DISPOSITIVO
+// FIREBASE: LEER Y GUARDAR
 async function obtenerPuntajes() {
   tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking...</td></tr>";
   try {
@@ -146,15 +158,13 @@ async function obtenerPuntajes() {
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
 
-      // Guardar mi propio récord si este documento es de mi dispositivo
       if (docSnap.id === dispositivoID) {
         miRecordActual = data.puntos || 0;
         if (!nombreJugador.value && data.nombre) {
-          nombreJugador.value = data.nombre; // Recordar su último nombre usado
+          nombreJugador.value = data.nombre;
         }
       }
 
-      // Solo mostrar los primeros 5 en la tabla
       if (posicion <= 5) {
         const fila = document.createElement("tr");
         fila.innerHTML = `
@@ -205,10 +215,140 @@ async function guardarPuntuacion() {
 
 btnGuardar.addEventListener("click", guardarPuntuacion);
 
+// FUNCIÓN PARA DIBUJAR SKINS PERSONALIZADAS EN PAC-MAN
+function dibujarSkinPacman(px, py, radioSkin, skinKey) {
+  const skin = CATALOGO_SKINS[skinKey] || CATALOGO_SKINS.clasico;
+
+  ctx.save();
+  ctx.translate(px, py);
+
+  if (skin.tipo === "color") {
+    ctx.fillStyle = skin.valor;
+    ctx.beginPath();
+    ctx.arc(0, 0, radioSkin, 0.2 * Math.PI, 1.8 * Math.PI);
+    ctx.lineTo(0, 0);
+    ctx.fill();
+  } else {
+    // Dibujo base circular
+    ctx.beginPath();
+    ctx.arc(0, 0, radioSkin, 0, 2 * Math.PI);
+    ctx.clip(); // Recorta los dibujos dentro del círculo
+
+    switch (skin.id) {
+      case "futbol":
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fill();
+        ctx.fillStyle = "#000000";
+        // Hexágonos / manchas de pelota
+        ctx.beginPath();
+        ctx.arc(0, 0, radioSkin * 0.4, 0, 2 * Math.PI);
+        ctx.arc(-radioSkin * 0.7, -radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
+        ctx.arc(radioSkin * 0.7, radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
+        ctx.fill();
+        break;
+
+      case "sol":
+        ctx.fillStyle = "#FFCC00";
+        ctx.fill();
+        ctx.fillStyle = "#FF6600";
+        ctx.beginPath();
+        ctx.arc(0, 0, radioSkin * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+        break;
+
+      case "luna":
+        ctx.fillStyle = "#DDDDDD";
+        ctx.fill();
+        ctx.fillStyle = "#AAAAAA"; // Cráteres
+        ctx.beginPath();
+        ctx.arc(-5, -5, 4, 0, 2 * Math.PI);
+        ctx.arc(6, 4, 3, 0, 2 * Math.PI);
+        ctx.arc(-2, 7, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        break;
+
+      case "sushi":
+        ctx.fillStyle = "#113311"; // Nori (Alga)
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF"; // Arroz
+        ctx.beginPath();
+        ctx.arc(0, 0, radioSkin * 0.7, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = "#FF5533"; // Salmón centro
+        ctx.beginPath();
+        ctx.arc(0, 0, radioSkin * 0.35, 0, 2 * Math.PI);
+        ctx.fill();
+        break;
+
+      case "hamburguesa":
+        ctx.fillStyle = "#C68A4C"; // Pan inferior
+        ctx.fill();
+        ctx.fillStyle = "#502800"; // Carne
+        ctx.fillRect(-radioSkin, -3, radioSkin * 2, 6);
+        ctx.fillStyle = "#FFCC00"; // Queso
+        ctx.fillRect(-radioSkin, 3, radioSkin * 2, 3);
+        ctx.fillStyle = "#E53935"; // Tomate
+        ctx.fillRect(-radioSkin, -7, radioSkin * 2, 4);
+        break;
+
+      case "argentina":
+        ctx.fillStyle = "#75AADB"; // Celeste arriba
+        ctx.fillRect(-radioSkin, -radioSkin, radioSkin * 2, radioSkin * 0.66);
+        ctx.fillStyle = "#FFFFFF"; // Blanco centro
+        ctx.fillRect(-radioSkin, -radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
+        ctx.fillStyle = "#75AADB"; // Celeste abajo
+        ctx.fillRect(-radioSkin, radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
+        // Sol de mayo centro
+        ctx.fillStyle = "#FDB913";
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        break;
+    }
+  }
+
+  ctx.restore();
+}
+
+// FUNCIONES DE LA TIENDA (Para llamar desde la consola o interfaz)
+window.comprarSkin = function(keySkin) {
+  const skin = CATALOGO_SKINS[keySkin];
+  if (!skin) return alert("La skin no existe.");
+  if (skinsDesbloqueadas.includes(keySkin)) return alert("¡Ya tenés esta skin!");
+
+  if (monedasTotales >= skin.precio) {
+    monedasTotales -= skin.precio;
+    skinsDesbloqueadas.push(keySkin);
+    skinEquipada = keySkin;
+
+    localStorage.setItem("pacman_monedas", monedasTotales);
+    localStorage.setItem("pacman_skins_compradas", JSON.stringify(skinsDesbloqueadas));
+    localStorage.setItem("pacman_skin_equipada", skinEquipada);
+
+    alert(`¡Compraste y equipaste la skin ${skin.nombre}!`);
+  } else {
+    alert(`Te faltan ${skin.precio - monedasTotales} puntos/monedas para esta skin.`);
+  }
+};
+
+window.equiparSkin = function(keySkin) {
+  if (skinsDesbloqueadas.includes(keySkin)) {
+    skinEquipada = keySkin;
+    localStorage.setItem("pacman_skin_equipada", skinEquipada);
+    alert(`Skin equipada: ${CATALOGO_SKINS[keySkin].nombre}`);
+  } else {
+    alert("Primero tenés que comprar esta skin.");
+  }
+};
+
 // BUCLE PRINCIPAL DE JUEGO
 function actualizarJuego() {
   if (gameover) {
     if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
+
+    // Sumar los puntos obtenidos a las monedas totales guardadas
+    monedasTotales += puntos;
+    localStorage.setItem("pacman_monedas", monedasTotales);
 
     ctx.fillStyle = "red";
     ctx.font = "30px Arial";
@@ -221,26 +361,21 @@ function actualizarJuego() {
     return;
   }
 
-  // REVISAR ESTADO MODO FIEBRE
   if (modoFiebre && Date.now() > tiempoFiebre) {
     modoFiebre = false;
   }
 
-  // NIVEL ACTUAL Y AUMENTO DE VELOCIDAD (2.5% POR NIVEL)
   const nivel = Math.floor(puntos / 100);
   const factorVelocidad = Math.pow(1.025, nivel);
   let velFantasmaActual = velocidadBaseFantasma * factorVelocidad;
 
-  // En modo fiebre los fantasmas van a mitad de velocidad
   if (modoFiebre) {
     velFantasmaActual *= 0.5;
   }
 
-  // Mover Pac-Man
   x += vx;
   y += vy;
 
-  // Paredes y bordes
   if (x > canvas.width) x = 0;
   else if (x < 0) x = canvas.width;
   
@@ -271,7 +406,7 @@ function actualizarJuego() {
     }
   }
 
-  // Comer Súper Fruta (+30 PTS + MODO FIEBRE)
+  // Comer Súper Fruta (+30 PTS)
   if (superComidaVisible) {
     const dxSuper = x - superComidaX;
     const dySuper = y - superComidaY;
@@ -283,10 +418,8 @@ function actualizarJuego() {
     }
   }
 
-  // DIBUJAR PANTALLA
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Comida Normal
   if (comidaVisible) {
     ctx.fillStyle = "green";
     ctx.beginPath();
@@ -294,9 +427,8 @@ function actualizarJuego() {
     ctx.fill();
   }
 
-  // Súper Fruta (Brillante)
   if (superComidaVisible) {
-    ctx.fillStyle = "#FFD700"; // Dorado
+    ctx.fillStyle = "#FFD700";
     ctx.beginPath();
     ctx.arc(superComidaX, superComidaY, radioSuperComida, 0, 2 * Math.PI);
     ctx.fill();
@@ -309,14 +441,12 @@ function actualizarJuego() {
   const paletaActual = paletasFantasmas[nivel % paletasFantasmas.length];
 
   fantasmas.forEach((f, idx) => {
-    // MOVIMIENTO: Si está en modo Fiebre se alejan (escapan), si no lo persiguen
     if (modoFiebre) {
       if (f.x < x) f.x -= velFantasmaActual;
       if (f.x > x) f.x += velFantasmaActual;
       if (f.y < y) f.y -= velFantasmaActual;
       if (f.y > y) f.y += velFantasmaActual;
 
-      // Mantener fantasmas dentro del canvas cuando escapan
       f.x = Math.max(radioFantasma, Math.min(canvas.width - radioFantasma, f.x));
       f.y = Math.max(radioFantasma, Math.min(canvas.height - radioFantasma, f.y));
     } else {
@@ -330,10 +460,8 @@ function actualizarJuego() {
     const dyFantasma = y - f.y;
     const distFantasma = Math.sqrt(dxFantasma * dxFantasma + dyFantasma * dyFantasma);
     
-    // COLISIÓN Y COMER FANTASMAS
     if (distFantasma < radio + radioFantasma) {
       if (modoFiebre) {
-        // Comer al fantasma: suma 10 puntos y respawnea lejos
         puntos += 10;
         f.x = Math.floor(Math.random() * (canvas.width - 40)) + 20;
         f.y = Math.floor(Math.random() * (canvas.height - 40)) + 20;
@@ -342,7 +470,6 @@ function actualizarJuego() {
       }
     }
 
-    // Color del fantasma (Azul/Blanco asustado en modo fiebre)
     if (modoFiebre) {
       ctx.fillStyle = Math.floor(Date.now() / 200) % 2 === 0 ? "#0000FF" : "#FFFFFF";
     } else {
@@ -354,32 +481,94 @@ function actualizarJuego() {
     ctx.fill();
   });
 
-  // Pac-Man (Color dinámico / Parpadeo Dorado en Modo Fiebre)
+  // PAC-MAN (DIBUJAR SKIN EQUIPADA)
   if (modoFiebre) {
     ctx.fillStyle = Math.floor(Date.now() / 100) % 2 === 0 ? "#FFD700" : "#00FFFF";
+    ctx.beginPath();
+    ctx.arc(x, y, radio, 0.2 * Math.PI, 1.8 * Math.PI);
+    ctx.lineTo(x, y);
+    ctx.fill();
   } else {
-    ctx.fillStyle = coloresPacman[nivel % coloresPacman.length];
+    dibujarSkinPacman(x, y, radio, skinEquipada);
   }
 
-  ctx.beginPath();
-  ctx.arc(x, y, radio, 0.2 * Math.PI, 1.8 * Math.PI);
-  ctx.lineTo(x, y);
-  ctx.fill();
-
-  // Puntuación e Indicadores HUD
+  // HUD
   ctx.fillStyle = "white";
   ctx.font = "16px Arial";
   ctx.fillText("Puntos: " + puntos, 10, 25);
-  ctx.fillText("Nivel: " + (nivel + 1), 120, 25);
+  ctx.fillText("Monedas: " + (monedasTotales + puntos), 120, 25);
 
   if (modoFiebre) {
     ctx.fillStyle = "#FFD700";
     ctx.font = "bold 14px Arial";
-    ctx.fillText("¡MODO FIEBRE!", 210, 25);
+    ctx.fillText("¡MODO FIEBRE!", 250, 25);
   }
 
   animacionId = requestAnimationFrame(actualizarJuego);
 }
+// CONTROL DE LA TIENDA UI
+const modalTienda = document.getElementById("modalTienda");
+const btnAbrirTienda = document.getElementById("btnAbrirTienda");
+const btnCerrarTienda = document.getElementById("btnCerrarTienda");
+const catalogoContenedor = document.getElementById("catalogoContenedor");
+const monedasTienda = document.getElementById("monedasTienda");
+
+function renderizarTienda() {
+  monedasTienda.textContent = monedasTotales;
+  catalogoContenedor.innerHTML = "";
+
+  Object.keys(CATALOGO_SKINS).forEach((key) => {
+    const skin = CATALOGO_SKINS[key];
+    const comprada = skinsDesbloqueadas.includes(key);
+    const equipada = skinEquipada === key;
+
+    const card = document.createElement("div");
+    card.className = `card-skin ${equipada ? "equipada" : ""}`;
+
+    let botonTexto = "";
+    let botonClase = "";
+    let accion = null;
+
+    if (equipada) {
+      botonTexto = "Equipada";
+      botonClase = "btn-equipar";
+    } else if (comprada) {
+      botonTexto = "Equipar";
+      botonClase = "btn-equipar";
+      accion = () => {
+        equiparSkin(key);
+        renderizarTienda();
+      };
+    } else {
+      botonTexto = `${skin.precio} 🪙`;
+      botonClase = "btn-comprar";
+      accion = () => {
+        comprarSkin(key);
+        renderizarTienda();
+      };
+    }
+
+    card.innerHTML = `
+      <strong>${skin.nombre}</strong>
+      <button class="${botonClase}" ${equipada ? "disabled" : ""}>${botonTexto}</button>
+    `;
+
+    if (accion && !equipada) {
+      card.querySelector("button").addEventListener("click", accion);
+    }
+
+    catalogoContenedor.appendChild(card);
+  });
+}
+
+btnAbrirTienda?.addEventListener("click", () => {
+  renderizarTienda();
+  modalTienda.classList.remove("oculto");
+});
+
+btnCerrarTienda?.addEventListener("click", () => {
+  modalTienda.classList.add("oculto");
+});
 
 // INICIAR
 obtenerPuntajes();
