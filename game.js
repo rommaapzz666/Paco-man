@@ -31,12 +31,28 @@ const ctx = canvas.getContext("2d");
 const radio = 20;
 const velocidad = 3;
 const radioFantasma = 18;
-const velocidadFantasma = 1.5;
+const velocidadBaseFantasma = 1.5;
 const radioComida = 6;
+const radioSuperComida = 10;
 
 let x, y, vx, vy, gameover, fantasmas, comidaX, comidaY, comidaVisible, puntos;
 let animacionId;
 let miRecordActual = 0; // Guardará el récord actual del jugador
+
+// VARIABLES MODO FIEBRE Y SÚPER FRUTA
+let superComidaX = -100, superComidaY = -100, superComidaVisible = false;
+let modoFiebre = false;
+let tiempoFiebre = 0;
+let intervaloSuperFruta;
+
+// PALETAS DE COLORES SEGÚN NIVEL (CADA 100 PTS)
+const coloresPacman = ["#FFFF00", "#00FFCC", "#FF00FF", "#00FF00", "#FF9900", "#FF0066"];
+const paletasFantasmas = [
+  ["#FF0000", "#FFB8FF", "#00FFFF", "#FFB852"], // Nivel 0 (Originales)
+  ["#9900FF", "#00FF00", "#FF00AA", "#0099FF"], // Nivel 1
+  ["#FF5722", "#E91E63", "#00BCD4", "#8BC34A"], // Nivel 2
+  ["#E6EE9C", "#FFAB91", "#CE93D8", "#80CBC4"]  // Nivel 3+
+];
 
 // ELEMENTOS DOM
 const gameOverPanel = document.getElementById("gameOverPanel");
@@ -59,11 +75,33 @@ function iniciarJuego() {
   comidaVisible = true;
   puntos = 0;
 
+  modoFiebre = false;
+  tiempoFiebre = 0;
+  superComidaVisible = false;
+
   gameOverPanel.classList.add("oculto");
   btnGuardar.disabled = false;
 
   if (animacionId) cancelAnimationFrame(animacionId);
+  if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
+
+  // Aparece una súper fruta cada 15 segundos
+  intervaloSuperFruta = setInterval(generarSuperFruta, 15000);
+
   actualizarJuego();
+}
+
+function generarSuperFruta() {
+  if (!gameover && !superComidaVisible) {
+    superComidaX = Math.floor(Math.random() * (canvas.width - 60)) + 30;
+    superComidaY = Math.floor(Math.random() * (canvas.height - 60)) + 30;
+    superComidaVisible = true;
+  }
+}
+
+function activarModoFiebre() {
+  modoFiebre = true;
+  tiempoFiebre = Date.now() + 5000; // 5 segundos de duración
 }
 
 // FUNCIONES DE CONTROL DE MOVIMIENTO
@@ -75,7 +113,6 @@ function parar() { vx = 0; vy = 0; } // QUEDARSE QUIETO
 
 // TECLADO (Espacio = Frenar)
 window.addEventListener("keydown", (evento) => {
-  // Evita que la pantalla se mueva hacia arriba, abajo o se desplace al presionar las flechas o el espacio
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space"].includes(evento.key)) {
     evento.preventDefault();
   }
@@ -142,7 +179,6 @@ async function guardarPuntuacion() {
   const nombre = nombreJugador.value.trim() || "Anónimo";
   btnGuardar.disabled = true;
 
-  // Solo guarda/actualiza si superó su propio récord personal
   if (puntos <= miRecordActual) {
     alert(`Tu récord personal es de ${miRecordActual} pts. ¡Sigue intentando para superarlo!`);
     btnGuardar.disabled = false;
@@ -151,7 +187,6 @@ async function guardarPuntuacion() {
   }
 
   try {
-    // Guarda o reemplaza usando el ID del dispositivo como clave del documento
     await setDoc(doc(db, "puntajes", dispositivoID), {
       nombre: nombre,
       puntos: puntos,
@@ -173,6 +208,8 @@ btnGuardar.addEventListener("click", guardarPuntuacion);
 // BUCLE PRINCIPAL DE JUEGO
 function actualizarJuego() {
   if (gameover) {
+    if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
+
     ctx.fillStyle = "red";
     ctx.font = "30px Arial";
     ctx.fillText("GAME OVER", 110, 200);
@@ -182,6 +219,21 @@ function actualizarJuego() {
       gameOverPanel.classList.remove("oculto");
     }
     return;
+  }
+
+  // REVISAR ESTADO MODO FIEBRE
+  if (modoFiebre && Date.now() > tiempoFiebre) {
+    modoFiebre = false;
+  }
+
+  // NIVEL ACTUAL Y AUMENTO DE VELOCIDAD (2.5% POR NIVEL)
+  const nivel = Math.floor(puntos / 100);
+  const factorVelocidad = Math.pow(1.025, nivel);
+  let velFantasmaActual = velocidadBaseFantasma * factorVelocidad;
+
+  // En modo fiebre los fantasmas van a mitad de velocidad
+  if (modoFiebre) {
+    velFantasmaActual *= 0.5;
   }
 
   // Mover Pac-Man
@@ -200,7 +252,7 @@ function actualizarJuego() {
     vy = 0; 
   }
 
-  // Comer comida
+  // Comer comida normal
   if (comidaVisible) {
     const dx = x - comidaX;
     const dy = y - comidaY;
@@ -219,10 +271,22 @@ function actualizarJuego() {
     }
   }
 
+  // Comer Súper Fruta (+100 PTS + MODO FIEBRE)
+  if (superComidaVisible) {
+    const dxSuper = x - superComidaX;
+    const dySuper = y - superComidaY;
+    const distSuper = Math.sqrt(dxSuper * dxSuper + dySuper * dySuper);
+    if (distSuper < radio + radioSuperComida) {
+      puntos += 100;
+      superComidaVisible = false;
+      activarModoFiebre();
+    }
+  }
+
   // DIBUJAR PANTALLA
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Comida
+  // Comida Normal
   if (comidaVisible) {
     ctx.fillStyle = "green";
     ctx.beginPath();
@@ -230,37 +294,70 @@ function actualizarJuego() {
     ctx.fill();
   }
 
+  // Súper Fruta (Brillante)
+  if (superComidaVisible) {
+    ctx.fillStyle = "#FFD700"; // Dorado
+    ctx.beginPath();
+    ctx.arc(superComidaX, superComidaY, radioSuperComida, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
   // Fantasmas IA
-  fantasmas.forEach((f) => {
-    if (f.x < x) f.x += velocidadFantasma;
-    if (f.x > x) f.x -= velocidadFantasma;
-    if (f.y < y) f.y += velocidadFantasma;
-    if (f.y > y) f.y -= velocidadFantasma;
+  const paletaActual = paletasFantasmas[nivel % paletasFantasmas.length];
+
+  fantasmas.forEach((f, idx) => {
+    if (f.x < x) f.x += velFantasmaActual;
+    if (f.x > x) f.x -= velFantasmaActual;
+    if (f.y < y) f.y += velFantasmaActual;
+    if (f.y > y) f.y -= velFantasmaActual;
 
     const dxFantasma = x - f.x;
     const dyFantasma = y - f.y;
     const distFantasma = Math.sqrt(dxFantasma * dxFantasma + dyFantasma * dyFantasma);
-    if (distFantasma < radio + radioFantasma) {
+    
+    // Si no está en modo fiebre, colisión causa Game Over
+    if (distFantasma < radio + radioFantasma && !modoFiebre) {
       gameover = true;
     }
 
-    ctx.fillStyle = "red";
+    // Color del fantasma (Azul/Blanco asustado en modo fiebre)
+    if (modoFiebre) {
+      ctx.fillStyle = Math.floor(Date.now() / 200) % 2 === 0 ? "#0000FF" : "#FFFFFF";
+    } else {
+      ctx.fillStyle = paletaActual[idx % paletaActual.length];
+    }
+
     ctx.beginPath();
     ctx.arc(f.x, f.y, radioFantasma, 0, 2 * Math.PI);
     ctx.fill();
   });
 
-  // Pac-Man
-  ctx.fillStyle = "yellow";
+  // Pac-Man (Color dinámico / Parpadeo Dorado en Modo Fiebre)
+  if (modoFiebre) {
+    ctx.fillStyle = Math.floor(Date.now() / 100) % 2 === 0 ? "#FFD700" : "#00FFFF";
+  } else {
+    ctx.fillStyle = coloresPacman[nivel % coloresPacman.length];
+  }
+
   ctx.beginPath();
   ctx.arc(x, y, radio, 0.2 * Math.PI, 1.8 * Math.PI);
   ctx.lineTo(x, y);
   ctx.fill();
 
-  // Puntuación
+  // Puntuación e Indicadores HUD
   ctx.fillStyle = "white";
   ctx.font = "16px Arial";
   ctx.fillText("Puntos: " + puntos, 10, 25);
+  ctx.fillText("Nivel: " + (nivel + 1), 120, 25);
+
+  if (modoFiebre) {
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("¡MODO FIEBRE!", 210, 25);
+  }
 
   animacionId = requestAnimationFrame(actualizarJuego);
 }
