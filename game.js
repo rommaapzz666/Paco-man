@@ -31,9 +31,10 @@ let skinsDesbloqueadas = JSON.parse(localStorage.getItem("pacman_skins_compradas
 
 // CATÁLOGO DE SKINS
 const CATALOGO_SKINS = {
-  clasico: { nombre: "Clásico (Amarillo)", precio: 0, tipo: "color", valor: "#FFFF00" },
+  clasico: { nombre: "Clásico", precio: 0, tipo: "color", valor: "#FFFF00" },
   rojo: { nombre: "Pac Rojo", precio: 100, tipo: "color", valor: "#FF0000" },
   neon: { nombre: "Pac Neón", precio: 200, tipo: "color", valor: "#00FFCC" },
+  kame: { nombre: "Insignia Kame (Goku)", precio: 400, tipo: "dibujo", id: "kame" },
   futbol: { nombre: "Pelota de Fútbol", precio: 500, tipo: "dibujo", id: "futbol" },
   sol: { nombre: "Sol Brillante", precio: 700, tipo: "dibujo", id: "sol" },
   luna: { nombre: "Luna", precio: 700, tipo: "dibujo", id: "luna" },
@@ -77,13 +78,44 @@ const nombreJugador = document.getElementById("nombreJugador");
 const btnGuardar = document.getElementById("btnGuardar");
 const btnReiniciar = document.getElementById("btnReiniciar");
 const tablaPuntajes = document.getElementById("tablaPuntajes");
+
+const puntosTexto = document.getElementById("puntosTexto");
 const monedasGlobales = document.getElementById("monedasGlobales");
 const monedasTienda = document.getElementById("monedasTienda");
+const hudPuntos = document.getElementById("hudPuntos");
+const hudMonedas = document.getElementById("hudMonedas");
 
-// ACTUALIZAR CONTADORES DE MONEDAS
+// ANIMAR PUNTOS Y MONEDAS AL CAMBIAR VALOR
+function triggerAnimacionHUD(elemento) {
+  if (!elemento) return;
+  elemento.classList.remove("animar-pop");
+  void elemento.offsetWidth; // Force reflow
+  elemento.classList.add("animar-pop");
+}
+
 function actualizarHUDMonedas() {
   if (monedasGlobales) monedasGlobales.textContent = monedasTotales;
   if (monedasTienda) monedasTienda.textContent = monedasTotales;
+}
+
+// APARICIÓN SEGURA EN ESQUINAS DISTANTES
+function obtenerEsquinaSegura() {
+  const esquinas = [
+    { x: 30, y: 30 },
+    { x: canvas.width - 30, y: 30 },
+    { x: 30, y: canvas.height - 30 },
+    { x: canvas.width - 30, y: canvas.height - 30 }
+  ];
+
+  // Ordenar de mayor a menor distancia respecto del Pac-Man
+  esquinas.sort((a, b) => {
+    const distA = Math.hypot(x - a.x, y - a.y);
+    const distB = Math.hypot(x - b.x, y - b.y);
+    return distB - distA;
+  });
+
+  // Retornar la más distante
+  return esquinas[0];
 }
 
 // INICIALIZAR/REINICIAR ESTADO DEL JUEGO
@@ -98,6 +130,8 @@ function iniciarJuego() {
   comidaY = 200;
   comidaVisible = true;
   puntos = 0;
+
+  if (puntosTexto) puntosTexto.textContent = "0";
 
   modoFiebre = false;
   tiempoFiebre = 0;
@@ -132,7 +166,7 @@ function activarModoFiebre() {
   tiempoFiebre = Date.now() + 5000;
 }
 
-// FUNCIONES DE CONTROL DE MOVIMIENTO
+// CONTROLES DE MOVIMIENTO
 function moverArriba() { vx = 0; vy = -velocidad; }
 function moverAbajo() { vx = 0; vy = velocidad; }
 function moverIzquierda() { vx = -velocidad; vy = 0; }
@@ -159,7 +193,7 @@ document.getElementById("btnParar")?.addEventListener("click", parar);
 
 btnReiniciar?.addEventListener("click", iniciarJuego);
 
-// FIREBASE: LEER Y GUARDAR
+// FIREBASE
 async function obtenerPuntajes() {
   if (!tablaPuntajes) return;
   tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking...</td></tr>";
@@ -229,96 +263,114 @@ async function guardarPuntuacion() {
 
 btnGuardar?.addEventListener("click", guardarPuntuacion);
 
-// DIBUJAR SKINS EN PAC-MAN
-function dibujarSkinPacman(px, py, radioSkin, skinKey) {
+// DIBUJAR SKINS EN CANVAS
+function dibujarSkinPacman(targetCtx, px, py, radioSkin, skinKey) {
   const skin = CATALOGO_SKINS[skinKey] || CATALOGO_SKINS.clasico;
 
-  ctx.save();
-  ctx.translate(px, py);
+  targetCtx.save();
+  targetCtx.translate(px, py);
 
   if (skin.tipo === "color") {
-    ctx.fillStyle = skin.valor;
-    ctx.beginPath();
-    ctx.arc(0, 0, radioSkin, 0.2 * Math.PI, 1.8 * Math.PI);
-    ctx.lineTo(0, 0);
-    ctx.fill();
+    targetCtx.fillStyle = skin.valor;
+    targetCtx.beginPath();
+    targetCtx.arc(0, 0, radioSkin, 0.2 * Math.PI, 1.8 * Math.PI);
+    targetCtx.lineTo(0, 0);
+    targetCtx.fill();
   } else {
-    ctx.beginPath();
-    ctx.arc(0, 0, radioSkin, 0, 2 * Math.PI);
-    ctx.clip();
+    targetCtx.beginPath();
+    targetCtx.arc(0, 0, radioSkin, 0, 2 * Math.PI);
+    targetCtx.clip();
 
     switch (skin.id) {
+      case "kame":
+        targetCtx.fillStyle = "#FF7700";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#FFFFFF";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, radioSkin * 0.75, 0, 2 * Math.PI);
+        targetCtx.fill();
+        targetCtx.strokeStyle = "#000000";
+        targetCtx.lineWidth = 1.5;
+        targetCtx.stroke();
+        
+        targetCtx.fillStyle = "#000000";
+        targetCtx.font = `bold ${Math.floor(radioSkin * 0.85)}px Arial`;
+        targetCtx.textAlign = "center";
+        targetCtx.textBaseline = "middle";
+        targetCtx.fillText("亀", 0, 1);
+        break;
+
       case "futbol":
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fill();
-        ctx.fillStyle = "#000000";
-        ctx.beginPath();
-        ctx.arc(0, 0, radioSkin * 0.4, 0, 2 * Math.PI);
-        ctx.arc(-radioSkin * 0.7, -radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
-        ctx.arc(radioSkin * 0.7, radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.fillStyle = "#FFFFFF";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#000000";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, radioSkin * 0.4, 0, 2 * Math.PI);
+        targetCtx.arc(-radioSkin * 0.7, -radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
+        targetCtx.arc(radioSkin * 0.7, radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
+        targetCtx.fill();
         break;
 
       case "sol":
-        ctx.fillStyle = "#FFCC00";
-        ctx.fill();
-        ctx.fillStyle = "#FF6600";
-        ctx.beginPath();
-        ctx.arc(0, 0, radioSkin * 0.5, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.fillStyle = "#FFCC00";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#FF6600";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, radioSkin * 0.5, 0, 2 * Math.PI);
+        targetCtx.fill();
         break;
 
       case "luna":
-        ctx.fillStyle = "#DDDDDD";
-        ctx.fill();
-        ctx.fillStyle = "#AAAAAA";
-        ctx.beginPath();
-        ctx.arc(-5, -5, 4, 0, 2 * Math.PI);
-        ctx.arc(6, 4, 3, 0, 2 * Math.PI);
-        ctx.arc(-2, 7, 2, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.fillStyle = "#DDDDDD";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#AAAAAA";
+        targetCtx.beginPath();
+        targetCtx.arc(-5, -5, 4, 0, 2 * Math.PI);
+        targetCtx.arc(6, 4, 3, 0, 2 * Math.PI);
+        targetCtx.arc(-2, 7, 2, 0, 2 * Math.PI);
+        targetCtx.fill();
         break;
 
       case "sushi":
-        ctx.fillStyle = "#113311";
-        ctx.fill();
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(0, 0, radioSkin * 0.7, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.fillStyle = "#FF5533";
-        ctx.beginPath();
-        ctx.arc(0, 0, radioSkin * 0.35, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.fillStyle = "#113311";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#FFFFFF";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, radioSkin * 0.7, 0, 2 * Math.PI);
+        targetCtx.fill();
+        targetCtx.fillStyle = "#FF5533";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, radioSkin * 0.35, 0, 2 * Math.PI);
+        targetCtx.fill();
         break;
 
       case "hamburguesa":
-        ctx.fillStyle = "#C68A4C";
-        ctx.fill();
-        ctx.fillStyle = "#502800";
-        ctx.fillRect(-radioSkin, -3, radioSkin * 2, 6);
-        ctx.fillStyle = "#FFCC00";
-        ctx.fillRect(-radioSkin, 3, radioSkin * 2, 3);
-        ctx.fillStyle = "#E53935";
-        ctx.fillRect(-radioSkin, -7, radioSkin * 2, 4);
+        targetCtx.fillStyle = "#C68A4C";
+        targetCtx.fill();
+        targetCtx.fillStyle = "#502800";
+        targetCtx.fillRect(-radioSkin, -3, radioSkin * 2, 6);
+        targetCtx.fillStyle = "#FFCC00";
+        targetCtx.fillRect(-radioSkin, 3, radioSkin * 2, 3);
+        targetCtx.fillStyle = "#E53935";
+        targetCtx.fillRect(-radioSkin, -7, radioSkin * 2, 4);
         break;
 
       case "argentina":
-        ctx.fillStyle = "#75AADB";
-        ctx.fillRect(-radioSkin, -radioSkin, radioSkin * 2, radioSkin * 0.66);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(-radioSkin, -radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
-        ctx.fillStyle = "#75AADB";
-        ctx.fillRect(-radioSkin, radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
-        ctx.fillStyle = "#FDB913";
-        ctx.beginPath();
-        ctx.arc(0, 0, 4, 0, 2 * Math.PI);
-        ctx.fill();
+        targetCtx.fillStyle = "#75AADB";
+        targetCtx.fillRect(-radioSkin, -radioSkin, radioSkin * 2, radioSkin * 0.66);
+        targetCtx.fillStyle = "#FFFFFF";
+        targetCtx.fillRect(-radioSkin, -radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
+        targetCtx.fillStyle = "#75AADB";
+        targetCtx.fillRect(-radioSkin, radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
+        targetCtx.fillStyle = "#FDB913";
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, 4, 0, 2 * Math.PI);
+        targetCtx.fill();
         break;
     }
   }
 
-  ctx.restore();
+  targetCtx.restore();
 }
 
 // FUNCIONES DE LA TIENDA
@@ -337,6 +389,7 @@ window.comprarSkin = function(keySkin) {
     localStorage.setItem("pacman_skin_equipada", skinEquipada);
 
     actualizarHUDMonedas();
+    triggerAnimacionHUD(hudMonedas);
     alert(`Compraste y equipaste la skin: ${skin.nombre}`);
   } else {
     alert(`Te faltan ${skin.precio - monedasTotales} monedas para esta skin.`);
@@ -358,9 +411,12 @@ function actualizarJuego() {
   if (gameover) {
     if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
 
-    monedasTotales += puntos;
-    localStorage.setItem("pacman_monedas", monedasTotales);
-    actualizarHUDMonedas();
+    if (puntos > 0) {
+      monedasTotales += puntos;
+      localStorage.setItem("pacman_monedas", monedasTotales);
+      actualizarHUDMonedas();
+      triggerAnimacionHUD(hudMonedas);
+    }
 
     ctx.fillStyle = "red";
     ctx.font = "30px Arial";
@@ -406,14 +462,16 @@ function actualizarJuego() {
     const distancia = Math.sqrt(dx * dx + dy * dy);
     if (distancia < radio + radioComida) {
       puntos += 10;
+      if (puntosTexto) puntosTexto.textContent = puntos;
+      triggerAnimacionHUD(hudPuntos);
+
       comidaX = Math.floor(Math.random() * (canvas.width - 40)) + 20;
       comidaY = Math.floor(Math.random() * (canvas.height - 40)) + 20;    
 
+      // Aparecer nuevo fantasma de forma segura en una esquina lejana
       if (puntos % 50 === 0) {
-        fantasmas.push({
-          x: Math.floor(Math.random() * (canvas.width - 40)) + 20,
-          y: Math.floor(Math.random() * (canvas.height - 40)) + 20
-        });
+        const esquinaSegura = obtenerEsquinaSegura();
+        fantasmas.push({ x: esquinaSegura.x, y: esquinaSegura.y });
       }
     }
   }
@@ -425,6 +483,9 @@ function actualizarJuego() {
     const distSuper = Math.sqrt(dxSuper * dxSuper + dySuper * dySuper);
     if (distSuper < radio + radioSuperComida) {
       puntos += 30;
+      if (puntosTexto) puntosTexto.textContent = puntos;
+      triggerAnimacionHUD(hudPuntos);
+
       superComidaVisible = false;
       activarModoFiebre();
     }
@@ -475,8 +536,12 @@ function actualizarJuego() {
     if (distFantasma < radio + radioFantasma) {
       if (modoFiebre) {
         puntos += 10;
-        f.x = Math.floor(Math.random() * (canvas.width - 40)) + 20;
-        f.y = Math.floor(Math.random() * (canvas.height - 40)) + 20;
+        if (puntosTexto) puntosTexto.textContent = puntos;
+        triggerAnimacionHUD(hudPuntos);
+
+        const esquinaReaparicion = obtenerEsquinaSegura();
+        f.x = esquinaReaparicion.x;
+        f.y = esquinaReaparicion.y;
       } else {
         gameover = true;
       }
@@ -501,13 +566,8 @@ function actualizarJuego() {
     ctx.lineTo(x, y);
     ctx.fill();
   } else {
-    dibujarSkinPacman(x, y, radio, skinEquipada);
+    dibujarSkinPacman(ctx, x, y, radio, skinEquipada);
   }
-
-  // HUD CANVAS
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.fillText("Puntos: " + puntos, 10, 25);
 
   if (modoFiebre) {
     ctx.fillStyle = "#FFD700";
@@ -518,7 +578,7 @@ function actualizarJuego() {
   animacionId = requestAnimationFrame(actualizarJuego);
 }
 
-// CONTROL DE LA TIENDA UI
+// CONTROL DE LA TIENDA Y RENDERIZADO CON PREVISUALIZACIÓN
 const modalTienda = document.getElementById("modalTienda");
 const btnAbrirTienda = document.getElementById("btnAbrirTienda");
 const btnCerrarTienda = document.getElementById("btnCerrarTienda");
@@ -537,6 +597,13 @@ function renderizarTienda() {
 
     const card = document.createElement("div");
     card.className = `card-skin ${equipada ? "equipada" : ""}`;
+
+    // Canvas de previsualización
+    const previewCanvas = document.createElement("canvas");
+    previewCanvas.width = 44;
+    previewCanvas.height = 44;
+    const previewCtx = previewCanvas.getContext("2d");
+    dibujarSkinPacman(previewCtx, 22, 22, 18, key);
 
     let botonTexto = "";
     let botonClase = "";
@@ -561,14 +628,21 @@ function renderizarTienda() {
       };
     }
 
-    card.innerHTML = `
-      <strong>${skin.nombre}</strong>
-      <button class="${botonClase}" ${equipada ? "disabled" : ""}>${botonTexto}</button>
-    `;
+    const titulo = document.createElement("strong");
+    titulo.textContent = skin.nombre;
+
+    const boton = document.createElement("button");
+    boton.className = botonClase;
+    boton.textContent = botonTexto;
+    if (equipada) boton.disabled = true;
 
     if (accion && !equipada) {
-      card.querySelector("button")?.addEventListener("click", accion);
+      boton.addEventListener("click", accion);
     }
+
+    card.appendChild(previewCanvas);
+    card.appendChild(titulo);
+    card.appendChild(boton);
 
     catalogoContenedor.appendChild(card);
   });
