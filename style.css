@@ -9,30 +9,52 @@ body {
   touch-action: manipulation;
 }
 
-/* Header superior con monedas acumuladas en la esquina */
-.header-juego {
-  position: relative;
+h1 {
+  margin: 5px 0 10px 0;
+}
+
+/* Contenedor principal con marcadores superiores */
+.contenedor-juego {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   max-width: 400px;
+}
+
+/* HUD Superior con Animaciones */
+.hud-superior {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 8px;
 }
 
-.header-juego h1 {
-  margin: 10px 0;
-}
-
-.hud-monedas-esquina {
-  position: absolute;
-  right: 0;
-  background-color: #222;
-  border: 1px solid #f1c40f;
-  color: #f1c40f;
-  padding: 5px 10px;
-  border-radius: 12px;
-  font-size: 13px;
+.hud-card {
+  background: #222;
+  border: 2px solid #3498db;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
   font-weight: bold;
+  font-size: 14px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.hud-monedas {
+  border-color: #f1c40f;
+  color: #f1c40f;
+}
+
+/* Animación cuando aumentan los valores */
+.animar-pop {
+  animation: popAnim 0.3s ease-in-out;
+}
+
+@keyframes popAnim {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); filter: brightness(1.4); }
+  100% { transform: scale(1); }
 }
 
 canvas {
@@ -227,7 +249,7 @@ th {
   color: #fff;
 }
 
-/* Grilla de Skins */
+/* Grilla de Skins y Miniaturas de Vista Previa */
 .grid-skins {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -244,6 +266,12 @@ th {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+.card-skin canvas {
+  border: 2px solid #555;
+  border-radius: 50%;
+  background-color: #000;
 }
 
 .card-skin.equipada {
