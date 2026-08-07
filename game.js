@@ -54,7 +54,7 @@ const radioComida = 6;
 const radioSuperComida = 10;
 
 let x, y, vx, vy, gameover, fantasmas, comidaX, comidaY, comidaVisible, puntos;
-let animacionId;
+let animacionId = null;
 let miRecordActual = 0;
 
 // VARIABLES MODO FIEBRE Y SÚPER FRUTA
@@ -95,10 +95,13 @@ function iniciarJuego() {
   tiempoFiebre = 0;
   superComidaVisible = false;
 
-  gameOverPanel.classList.add("oculto");
-  btnGuardar.disabled = false;
+  gameOverPanel?.classList.add("oculto");
+  if (btnGuardar) btnGuardar.disabled = false;
 
-  if (animacionId) cancelAnimationFrame(animacionId);
+  if (animacionId) {
+    cancelAnimationFrame(animacionId);
+    animacionId = null;
+  }
   if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
 
   intervaloSuperFruta = setInterval(generarSuperFruta, 30000);
@@ -148,6 +151,7 @@ btnReiniciar?.addEventListener("click", iniciarJuego);
 
 // FIREBASE: LEER Y GUARDAR
 async function obtenerPuntajes() {
+  if (!tablaPuntajes) return;
   tablaPuntajes.innerHTML = "<tr><td colspan='3'>Cargando ranking...</td></tr>";
   try {
     const q = query(puntajesRef, orderBy("puntos", "desc"));
@@ -160,7 +164,7 @@ async function obtenerPuntajes() {
 
       if (docSnap.id === dispositivoID) {
         miRecordActual = data.puntos || 0;
-        if (!nombreJugador.value && data.nombre) {
+        if (nombreJugador && !nombreJugador.value && data.nombre) {
           nombreJugador.value = data.nombre;
         }
       }
@@ -186,13 +190,13 @@ async function obtenerPuntajes() {
 }
 
 async function guardarPuntuacion() {
-  const nombre = nombreJugador.value.trim() || "Anónimo";
-  btnGuardar.disabled = true;
+  const nombre = nombreJugador?.value.trim() || "Anónimo";
+  if (btnGuardar) btnGuardar.disabled = true;
 
   if (puntos <= miRecordActual) {
     alert(`Tu récord personal es de ${miRecordActual} pts. ¡Sigue intentando para superarlo!`);
-    btnGuardar.disabled = false;
-    gameOverPanel.classList.add("oculto");
+    if (btnGuardar) btnGuardar.disabled = false;
+    gameOverPanel?.classList.add("oculto");
     return;
   }
 
@@ -205,15 +209,15 @@ async function guardarPuntuacion() {
     
     miRecordActual = puntos;
     await obtenerPuntajes();
-    gameOverPanel.classList.add("oculto");
+    gameOverPanel?.classList.add("oculto");
   } catch (error) {
     console.error("Error guardando en Firebase:", error);
   } finally {
-    btnGuardar.disabled = false;
+    if (btnGuardar) btnGuardar.disabled = false;
   }
 }
 
-btnGuardar.addEventListener("click", guardarPuntuacion);
+btnGuardar?.addEventListener("click", guardarPuntuacion);
 
 // FUNCIÓN PARA DIBUJAR SKINS PERSONALIZADAS EN PAC-MAN
 function dibujarSkinPacman(px, py, radioSkin, skinKey) {
@@ -229,17 +233,15 @@ function dibujarSkinPacman(px, py, radioSkin, skinKey) {
     ctx.lineTo(0, 0);
     ctx.fill();
   } else {
-    // Dibujo base circular
     ctx.beginPath();
     ctx.arc(0, 0, radioSkin, 0, 2 * Math.PI);
-    ctx.clip(); // Recorta los dibujos dentro del círculo
+    ctx.clip();
 
     switch (skin.id) {
       case "futbol":
         ctx.fillStyle = "#FFFFFF";
         ctx.fill();
         ctx.fillStyle = "#000000";
-        // Hexágonos / manchas de pelota
         ctx.beginPath();
         ctx.arc(0, 0, radioSkin * 0.4, 0, 2 * Math.PI);
         ctx.arc(-radioSkin * 0.7, -radioSkin * 0.5, radioSkin * 0.3, 0, 2 * Math.PI);
@@ -259,7 +261,7 @@ function dibujarSkinPacman(px, py, radioSkin, skinKey) {
       case "luna":
         ctx.fillStyle = "#DDDDDD";
         ctx.fill();
-        ctx.fillStyle = "#AAAAAA"; // Cráteres
+        ctx.fillStyle = "#AAAAAA";
         ctx.beginPath();
         ctx.arc(-5, -5, 4, 0, 2 * Math.PI);
         ctx.arc(6, 4, 3, 0, 2 * Math.PI);
@@ -268,37 +270,36 @@ function dibujarSkinPacman(px, py, radioSkin, skinKey) {
         break;
 
       case "sushi":
-        ctx.fillStyle = "#113311"; // Nori (Alga)
+        ctx.fillStyle = "#113311";
         ctx.fill();
-        ctx.fillStyle = "#FFFFFF"; // Arroz
+        ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
         ctx.arc(0, 0, radioSkin * 0.7, 0, 2 * Math.PI);
         ctx.fill();
-        ctx.fillStyle = "#FF5533"; // Salmón centro
+        ctx.fillStyle = "#FF5533";
         ctx.beginPath();
         ctx.arc(0, 0, radioSkin * 0.35, 0, 2 * Math.PI);
         ctx.fill();
         break;
 
       case "hamburguesa":
-        ctx.fillStyle = "#C68A4C"; // Pan inferior
+        ctx.fillStyle = "#C68A4C";
         ctx.fill();
-        ctx.fillStyle = "#502800"; // Carne
+        ctx.fillStyle = "#502800";
         ctx.fillRect(-radioSkin, -3, radioSkin * 2, 6);
-        ctx.fillStyle = "#FFCC00"; // Queso
+        ctx.fillStyle = "#FFCC00";
         ctx.fillRect(-radioSkin, 3, radioSkin * 2, 3);
-        ctx.fillStyle = "#E53935"; // Tomate
+        ctx.fillStyle = "#E53935";
         ctx.fillRect(-radioSkin, -7, radioSkin * 2, 4);
         break;
 
       case "argentina":
-        ctx.fillStyle = "#75AADB"; // Celeste arriba
+        ctx.fillStyle = "#75AADB";
         ctx.fillRect(-radioSkin, -radioSkin, radioSkin * 2, radioSkin * 0.66);
-        ctx.fillStyle = "#FFFFFF"; // Blanco centro
+        ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(-radioSkin, -radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
-        ctx.fillStyle = "#75AADB"; // Celeste abajo
+        ctx.fillStyle = "#75AADB";
         ctx.fillRect(-radioSkin, radioSkin * 0.33, radioSkin * 2, radioSkin * 0.66);
-        // Sol de mayo centro
         ctx.fillStyle = "#FDB913";
         ctx.beginPath();
         ctx.arc(0, 0, 4, 0, 2 * Math.PI);
@@ -310,7 +311,7 @@ function dibujarSkinPacman(px, py, radioSkin, skinKey) {
   ctx.restore();
 }
 
-// FUNCIONES DE LA TIENDA (Para llamar desde la consola o interfaz)
+// FUNCIONES DE LA TIENDA
 window.comprarSkin = function(keySkin) {
   const skin = CATALOGO_SKINS[keySkin];
   if (!skin) return alert("La skin no existe.");
@@ -346,7 +347,6 @@ function actualizarJuego() {
   if (gameover) {
     if (intervaloSuperFruta) clearInterval(intervaloSuperFruta);
 
-    // Sumar los puntos obtenidos a las monedas totales guardadas
     monedasTotales += puntos;
     localStorage.setItem("pacman_monedas", monedasTotales);
 
@@ -354,8 +354,8 @@ function actualizarJuego() {
     ctx.font = "30px Arial";
     ctx.fillText("GAME OVER", 110, 200);
 
-    if (gameOverPanel.classList.contains("oculto")) {
-      puntajeFinal.textContent = puntos;
+    if (gameOverPanel?.classList.contains("oculto")) {
+      if (puntajeFinal) puntajeFinal.textContent = puntos;
       gameOverPanel.classList.remove("oculto");
     }
     return;
@@ -406,7 +406,7 @@ function actualizarJuego() {
     }
   }
 
-  // Comer Súper Fruta (+30 PTS)
+  // Comer Súper Fruta
   if (superComidaVisible) {
     const dxSuper = x - superComidaX;
     const dySuper = y - superComidaY;
@@ -481,7 +481,7 @@ function actualizarJuego() {
     ctx.fill();
   });
 
-  // PAC-MAN (DIBUJAR SKIN EQUIPADA)
+  // PAC-MAN
   if (modoFiebre) {
     ctx.fillStyle = Math.floor(Date.now() / 100) % 2 === 0 ? "#FFD700" : "#00FFFF";
     ctx.beginPath();
@@ -506,6 +506,7 @@ function actualizarJuego() {
 
   animacionId = requestAnimationFrame(actualizarJuego);
 }
+
 // CONTROL DE LA TIENDA UI
 const modalTienda = document.getElementById("modalTienda");
 const btnAbrirTienda = document.getElementById("btnAbrirTienda");
@@ -514,6 +515,7 @@ const catalogoContenedor = document.getElementById("catalogoContenedor");
 const monedasTienda = document.getElementById("monedasTienda");
 
 function renderizarTienda() {
+  if (!monedasTienda || !catalogoContenedor) return;
   monedasTienda.textContent = monedasTotales;
   catalogoContenedor.innerHTML = "";
 
@@ -554,7 +556,7 @@ function renderizarTienda() {
     `;
 
     if (accion && !equipada) {
-      card.querySelector("button").addEventListener("click", accion);
+      card.querySelector("button")?.addEventListener("click", accion);
     }
 
     catalogoContenedor.appendChild(card);
@@ -563,11 +565,11 @@ function renderizarTienda() {
 
 btnAbrirTienda?.addEventListener("click", () => {
   renderizarTienda();
-  modalTienda.classList.remove("oculto");
+  modalTienda?.classList.remove("oculto");
 });
 
 btnCerrarTienda?.addEventListener("click", () => {
-  modalTienda.classList.add("oculto");
+  modalTienda?.classList.add("oculto");
 });
 
 // INICIAR
