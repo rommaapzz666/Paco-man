@@ -7,15 +7,22 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Contenedor Superior con Titulo y Monedas en la Esquina -->
-  <div class="header-juego">
-    <h1>Pac-Man</h1>
-    <div class="hud-monedas-esquina">
-      Monedas: <span id="monedasGlobales">0</span>
+  <!-- Header del Juego -->
+  <h1>Pac-Man</h1>
+
+  <!-- Contenedor del Juego con Marcadores Animados -->
+  <div class="contenedor-juego">
+    <div class="hud-superior">
+      <div id="hudPuntos" class="hud-card">
+        Puntos: <span id="puntosTexto">0</span>
+      </div>
+      <div id="hudMonedas" class="hud-card hud-monedas">
+        Monedas: <span id="monedasGlobales">0</span>
+      </div>
     </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
   </div>
-  
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
 
   <!-- Panel Game Over -->
   <div id="gameOverPanel" class="oculto">
