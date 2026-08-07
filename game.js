@@ -77,6 +77,14 @@ const nombreJugador = document.getElementById("nombreJugador");
 const btnGuardar = document.getElementById("btnGuardar");
 const btnReiniciar = document.getElementById("btnReiniciar");
 const tablaPuntajes = document.getElementById("tablaPuntajes");
+const monedasGlobales = document.getElementById("monedasGlobales");
+const monedasTienda = document.getElementById("monedasTienda");
+
+// ACTUALIZAR CONTADORES DE MONEDAS
+function actualizarHUDMonedas() {
+  if (monedasGlobales) monedasGlobales.textContent = monedasTotales;
+  if (monedasTienda) monedasTienda.textContent = monedasTotales;
+}
 
 // INICIALIZAR/REINICIAR ESTADO DEL JUEGO
 function iniciarJuego() {
@@ -94,6 +102,8 @@ function iniciarJuego() {
   modoFiebre = false;
   tiempoFiebre = 0;
   superComidaVisible = false;
+
+  actualizarHUDMonedas();
 
   gameOverPanel?.classList.add("oculto");
   if (btnGuardar) btnGuardar.disabled = false;
@@ -219,7 +229,7 @@ async function guardarPuntuacion() {
 
 btnGuardar?.addEventListener("click", guardarPuntuacion);
 
-// FUNCIÓN PARA DIBUJAR SKINS PERSONALIZADAS EN PAC-MAN
+// DIBUJAR SKINS EN PAC-MAN
 function dibujarSkinPacman(px, py, radioSkin, skinKey) {
   const skin = CATALOGO_SKINS[skinKey] || CATALOGO_SKINS.clasico;
 
@@ -315,7 +325,7 @@ function dibujarSkinPacman(px, py, radioSkin, skinKey) {
 window.comprarSkin = function(keySkin) {
   const skin = CATALOGO_SKINS[keySkin];
   if (!skin) return alert("La skin no existe.");
-  if (skinsDesbloqueadas.includes(keySkin)) return alert("¡Ya tenés esta skin!");
+  if (skinsDesbloqueadas.includes(keySkin)) return alert("¡Ya tienes esta skin!");
 
   if (monedasTotales >= skin.precio) {
     monedasTotales -= skin.precio;
@@ -326,9 +336,10 @@ window.comprarSkin = function(keySkin) {
     localStorage.setItem("pacman_skins_compradas", JSON.stringify(skinsDesbloqueadas));
     localStorage.setItem("pacman_skin_equipada", skinEquipada);
 
-    alert(`¡Compraste y equipaste la skin ${skin.nombre}!`);
+    actualizarHUDMonedas();
+    alert(`Compraste y equipaste la skin: ${skin.nombre}`);
   } else {
-    alert(`Te faltan ${skin.precio - monedasTotales} puntos/monedas para esta skin.`);
+    alert(`Te faltan ${skin.precio - monedasTotales} monedas para esta skin.`);
   }
 };
 
@@ -338,7 +349,7 @@ window.equiparSkin = function(keySkin) {
     localStorage.setItem("pacman_skin_equipada", skinEquipada);
     alert(`Skin equipada: ${CATALOGO_SKINS[keySkin].nombre}`);
   } else {
-    alert("Primero tenés que comprar esta skin.");
+    alert("Primero tienes que comprar esta skin.");
   }
 };
 
@@ -349,6 +360,7 @@ function actualizarJuego() {
 
     monedasTotales += puntos;
     localStorage.setItem("pacman_monedas", monedasTotales);
+    actualizarHUDMonedas();
 
     ctx.fillStyle = "red";
     ctx.font = "30px Arial";
@@ -492,16 +504,15 @@ function actualizarJuego() {
     dibujarSkinPacman(x, y, radio, skinEquipada);
   }
 
-  // HUD
+  // HUD CANVAS
   ctx.fillStyle = "white";
   ctx.font = "16px Arial";
   ctx.fillText("Puntos: " + puntos, 10, 25);
-  ctx.fillText("Monedas: " + (monedasTotales + puntos), 120, 25);
 
   if (modoFiebre) {
     ctx.fillStyle = "#FFD700";
     ctx.font = "bold 14px Arial";
-    ctx.fillText("¡MODO FIEBRE!", 250, 25);
+    ctx.fillText("MODO FIEBRE!", 250, 25);
   }
 
   animacionId = requestAnimationFrame(actualizarJuego);
@@ -512,11 +523,11 @@ const modalTienda = document.getElementById("modalTienda");
 const btnAbrirTienda = document.getElementById("btnAbrirTienda");
 const btnCerrarTienda = document.getElementById("btnCerrarTienda");
 const catalogoContenedor = document.getElementById("catalogoContenedor");
-const monedasTienda = document.getElementById("monedasTienda");
 
 function renderizarTienda() {
-  if (!monedasTienda || !catalogoContenedor) return;
-  monedasTienda.textContent = monedasTotales;
+  actualizarHUDMonedas();
+  if (!catalogoContenedor) return;
+
   catalogoContenedor.innerHTML = "";
 
   Object.keys(CATALOGO_SKINS).forEach((key) => {
@@ -542,7 +553,7 @@ function renderizarTienda() {
         renderizarTienda();
       };
     } else {
-      botonTexto = `${skin.precio} 🪙`;
+      botonTexto = `${skin.precio} Monedas`;
       botonClase = "btn-comprar";
       accion = () => {
         comprarSkin(key);
@@ -572,6 +583,7 @@ btnCerrarTienda?.addEventListener("click", () => {
   modalTienda?.classList.add("oculto");
 });
 
-// INICIAR
+// INICIAR JUEGO
+actualizarHUDMonedas();
 obtenerPuntajes();
 iniciarJuego();
