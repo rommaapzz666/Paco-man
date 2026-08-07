@@ -7,7 +7,13 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Pac-Man</h1>
+  <!-- Contenedor Superior con Titulo y Monedas en la Esquina -->
+  <div class="header-juego">
+    <h1>Pac-Man</h1>
+    <div class="hud-monedas-esquina">
+      Monedas: <span id="monedasGlobales">0</span>
+    </div>
+  </div>
   
   <canvas id="gameCanvas" width="400" height="400"></canvas>
 
@@ -17,7 +23,7 @@
     <p>Tu puntuación: <span id="puntajeFinal">0</span></p>
     <input type="text" id="nombreJugador" placeholder="Ingresa tu nombre" maxlength="10">
     <button id="btnGuardar">Guardar Puntaje</button>
-    <button id="btnReiniciar" class="btn-reiniciar"> Jugar de Nuevo</button>
+    <button id="btnReiniciar" class="btn-reiniciar">Jugar de Nuevo</button>
   </div>
 
   <!-- Controles Táctiles para Celular -->
@@ -34,26 +40,33 @@
       <button class="btn-dpad" id="btnAbajo">▼</button>
     </div>
   </div>
-<!-- Botón para abrir la tienda -->
-<div style="text-align: center; margin-top: 15px;">
-  <button id="btnAbrirTienda" class="btn-tienda">🛒 Tienda de Skins</button>
-</div>
 
-<!-- Ventana Modal de la Tienda -->
-<div id="modalTienda" class="modal-tienda oculto">
-  <div class="contenido-tienda">
-    <span id="btnCerrarTienda" class="cerrar">&times;</span>
-    <h2>🛒 Tienda de Skins</h2>
-    <p>Monedas disponibles: <strong id="monedasTienda">0</strong> 🪙</p>
-    
-    <div id="catalogoContenedor" class="grid-skins">
-      <!-- Las skins se generarán dinámicamente con JavaScript -->
+  <!-- Botón para abrir la tienda -->
+  <div style="text-align: center; margin-top: 15px;">
+    <button id="btnAbrirTienda" class="btn-tienda">Tienda de Skins</button>
+  </div>
+
+  <!-- Ventana Modal de la Tienda -->
+  <div id="modalTienda" class="modal-tienda oculto">
+    <div class="contenido-tienda">
+      <span id="btnCerrarTienda" class="cerrar">&times;</span>
+      
+      <div class="tienda-header-modal">
+        <h2>Tienda de Skins</h2>
+        <div class="monedas-modal-esquina">
+          Monedas: <span id="monedasTienda">0</span>
+        </div>
+      </div>
+      
+      <div id="catalogoContenedor" class="grid-skins">
+        <!-- Las skins se generarán dinámicamente con JavaScript -->
+      </div>
     </div>
   </div>
-</div>
+
   <!-- Tabla de Posiciones -->
   <div class="tabla-contenedor">
-    <h3> Top 5 Global </h3>
+    <h3>Top 5 Global</h3>
     <table>
       <thead>
         <tr>
