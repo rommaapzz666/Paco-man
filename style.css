@@ -177,6 +177,7 @@ th {
   border-radius: 8px;
   cursor: pointer;
   transition: transform 0.2s, background-color 0.2s;
+  margin-top: 35px;
 }
 
 .btn-tienda:hover {
